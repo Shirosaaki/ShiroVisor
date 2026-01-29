@@ -67,25 +67,31 @@ void vcpu_run(vm_t *vm) {
                  * Accept both the enum `KVM_EXIT_IO` and literal 6 to be robust. */
                 case 6:
                 case KVM_EXIT_IO: {
-                    uint8_t *data = (uint8_t *)vm->run + vm->run->io.data_offset;
-                    uint32_t dir = vm->run->io.direction;
-                    uint32_t size = vm->run->io.size;
-                    uint32_t count = vm->run->io.count;
+                    if (vm->run->io.port == 0x10 && vm->run->io.direction == KVM_EXIT_IO_OUT) {
+                        uint8_t *data = (uint8_t *)vm->run + vm->run->io.data_offset;
+                        uint32_t dir = vm->run->io.direction;
+                        uint32_t size = vm->run->io.size;
+                        uint32_t count = vm->run->io.count;
 
-                    if (dir == KVM_EXIT_IO_OUT) {
-                        for (uint32_t t = 0; t < count; ++t) {
-                            uint8_t *transfer = data + t * size;
-                            for (uint32_t b = 0; b < size; ++b) putchar(transfer[b]);
+                        if (dir == KVM_EXIT_IO_OUT) {
+                            for (uint32_t t = 0; t < count; ++t) {
+                                uint8_t *transfer = data + t * size;
+                                for (uint32_t b = 0; b < size; ++b) putchar(transfer[b]);
+                            }
+                            fflush(stdout);
+                        } else {
+                            for (uint32_t t = 0; t < count; ++t) {
+                                uint8_t *transfer = data + t * size;
+                                for (uint32_t b = 0; b < size; ++b) transfer[b] = 0;
+                            }
+                            fflush(stderr);
                         }
-                        fflush(stdout);
-                    } else {
-                        for (uint32_t t = 0; t < count; ++t) {
-                            uint8_t *transfer = data + t * size;
-                            for (uint32_t b = 0; b < size; ++b) transfer[b] = 0;
-                        }
-                        fflush(stderr);
+                    } else if (vm->run->io.port == 0x11 && vm->run->io.direction == KVM_EXIT_IO_IN) {
+                        // On lit un caractère depuis l'hôte
+                        uint8_t key = getchar(); 
+                        // On le place dans la structure de données partagée avec KVM
+                        *(uint8_t *)((uint8_t *)vm->run + vm->run->io.data_offset) = key;
                     }
-
                     break;
                 }
 

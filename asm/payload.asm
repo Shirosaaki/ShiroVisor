@@ -5,30 +5,56 @@
 ;;  Date: 2026-01-29
 ;;==============================================
 
-; asm/payload.asm
-[BITS 16]       ; We put the code in 16-bit mode
-[ORG 0x0000]    ; Origin at 0x0000
-
-jmp start
-
-; Define a simple string to print
-msg_string db 'Hello from the payload!', 10, 0
-
-print_string:
-    mov bl, [si]    ; Load the character from the string
-    cmp bl, 0       ; Check for null terminator
-    je .done        ; If null, we're done
-    mov al, bl      ; Move character to AL for output
-    out 0x10, al    ; Output character to port 0x10
-    inc si          ; Move to the next character
-    jmp print_string ; Repeat for next character
-.done:
-    ret
+[BITS 16]
+[ORG 0x0000]
 
 start:
-    ; Initialize SI to point to the string
-    mov si, msg_string
-    call print_string
+    ; Initialisation
+    xor ax, ax
+    mov ds, ax
+    mov es, ax
+    mov ss, ax
+    mov sp, 0x7000    
 
-    ; Halt the CPU
+    ; Affichage de test
+    mov ax, -32768    ; Le nombre min en 16-bit
+    call my_putnbr
+    
+    mov al, 10        ; \n
+    out 0x10, al
+    mov al, 13        ; \r
+    out 0x10, al
+
+    mov ax, 12345
+    call my_putnbr
+
     hlt
+
+my_putnbr:
+    pusha
+    cmp ax, 0
+    jge .is_pos
+    
+    push ax
+    mov al, '-'
+    out 0x10, al
+    pop ax
+    neg ax
+
+.is_pos:
+    mov bx, 10
+    xor cx, cx
+.extract:
+    xor dx, dx
+    div bx
+    add dl, '0'
+    push dx
+    inc cx
+    test ax, ax
+    jnz .extract
+.print:
+    pop ax
+    out 0x10, al
+    loop .print
+    popa
+    ret
