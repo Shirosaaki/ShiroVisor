@@ -42,6 +42,18 @@ need_op:
 have_op:
     mov cl, al        ; operator in CL
 
+    ; Validate operator before reading second number
+    cmp cl, '+'
+    je .op_read
+    cmp cl, '-'
+    je .op_read
+    cmp cl, '*'
+    je .op_read
+    cmp cl, '/'
+    je .op_read
+    jmp not_opp
+
+.op_read:
     ; Read second number
     call read_num
     mov dx, ax        ; second number in DX
@@ -55,7 +67,11 @@ have_op:
     je op_mul
     cmp cl, '/'
     je op_div
-    jmp main_loop
+    cmp cl, 48
+    jg main_loop
+    cmp cl, 57
+    jl main_loop
+    jmp not_opp
 
 op_add:
     mov ax, bx
@@ -86,6 +102,11 @@ div_by_zero:
     call print_string
     jmp main_loop
 
+not_opp:
+    mov si, msg_invalid_opp
+    call print_string
+    jmp main_loop
+
 print_res:
     ; Preserve AX (result) across print_string which modifies AL
     call print_number
@@ -110,7 +131,6 @@ read_num:
     cmp al, '9'
     ja .not_digit
     ; digit
-    out 0x10, al
     sub al, '0'
     xor cx, cx
     mov cl, al
@@ -193,3 +213,4 @@ quit:
 msg_start db "Calculator Ready.", 10, 13, "Usage: [num][op][num] (q to quit)", 10, 13, 0
 msg_res   db " = ", 0
 msg_err   db " DIV0!", 0
+msg_invalid_opp db "Error: Invalid Operator", 10, 13, 0
